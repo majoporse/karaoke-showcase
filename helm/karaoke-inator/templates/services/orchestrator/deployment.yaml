@@ -1,0 +1,107 @@
+{{- if .Values.orchestrator.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orchestrator
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "karaoke-inator.labels" . | nindent 4 }}
+    app: orchestrator
+spec:
+  replicas: {{ .Values.orchestrator.replicas }}
+  selector:
+    matchLabels:
+      app: orchestrator
+  template:
+    metadata:
+      labels:
+        {{- include "karaoke-inator.labels" . | nindent 8 }}
+        app: orchestrator
+    spec:
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: orchestrator
+        image: "{{ .Values.image.registry }}/{{ .Values.orchestrator.image.repository }}:{{ .Values.orchestrator.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.orchestrator.port }}
+          name: api
+          protocol: TCP
+        env:
+        # Service discovery URLs
+        - name: VOICE_SEPARATION_URL
+          value: "http://voice-separation:{{ .Values.voiceSeparation.port }}"
+        - name: LYRICS_EXTRACTION_URL
+          value: "http://lyrics-extraction:{{ .Values.lyricsExtraction.port }}"
+        - name: SONG_MANAGEMENT_URL
+          value: "http://song-management:{{ .Values.songManagement.port }}"
+
+        # MinIO Configuration
+        - name: MINIO_ENDPOINT
+          value: "{{ include "karaoke-inator.minio.endpoint" . }}"
+        - name: MINIO_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: karaoke-secrets
+              key: minio-root-user
+        - name: MINIO_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: karaoke-secrets
+              key: minio-root-password
+        - name: MINIO_SECURE
+          value: "false"
+        - name: MINIO_BUCKET_NAME
+          value: "karaoke"
+
+        # Server Configuration
+        - name: PORT
+          value: "8000"
+        - name: HOST
+          value: "0.0.0.0"
+
+        # Logging
+        - name: LOG_LEVEL
+          value: "INFO"
+        - name: YOUTUBE_COOKIES_PATH
+          value: "./yt/cookies.txt"
+        - name: POT_URL
+          value: "http://bgutil-pot-provider:4416"
+        - name: PROXY_URL
+          value: "http://103.38.106.13:1111"
+
+        # Redis configuration
+        - name: REDIS_URL
+          value: "{{ .Values.services.redis.url }}"
+
+        # MinIO Server URL
+        - name: SERVER_URL
+          value: "s3.hatal.cc"
+
+        # Telemetry
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "{{ .Values.services.otelCollector.endpoint }}"
+        {{- with .Values.orchestrator.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: {{ .Values.orchestrator.port }}
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet: 
+            path: /health
+            port: {{ .Values.orchestrator.port }}
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 3
+{{- end }}

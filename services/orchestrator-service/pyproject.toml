@@ -1,0 +1,61 @@
+[project]
+name = "orchestrator-service"
+version = "1.0.0"
+description = "Karaoke-Inator Orchestrator Service - Main API gateway for processing YouTube audio"
+readme = "README.md"
+requires-python = "~=3.12.0"
+dependencies = [
+    "fastapi~=0.125.0",
+    "httpx~=0.28.1",
+    "python-multipart~=0.0.21",
+    "uvicorn~=0.40.0",
+    "yt-dlp~=2025.12.8",
+    "python-dotenv~=1.0.0",
+    "pyyaml~=6.0.0",
+    "minio~=7.2.0",
+    "dishka~=1.3.0",
+    "voice_separation_client",
+    "lyrics_client",
+    "song_management_client",
+    "pyright>=1.1.408",
+    "types-yt-dlp>=2026.2.4.20260206",
+    "websockets>=16.0",
+    "chanx[fast_channels]>=2.5.0",
+    "rq~=2.1.0",
+    "redis[hiredis]~=5.1.0",
+    "types-redis>=4.6.0.20241004",
+    "bgutil-ytdlp-pot-provider>=1.3.1",
+    "prometheus-client>=0.21.0",
+    # "yt-dlp-get-pot>=0.3.0",
+    # "requests>=2.32.5",
+    # "yt-dlp-getpot-wpc>=1.0.0",
+    "nest-asyncio>=1.6.0",
+    "requests>=2.32.0",
+    "opentelemetry-api>=1.27.0",
+    "opentelemetry-sdk>=1.27.0",
+    "opentelemetry-exporter-otlp-proto-grpc>=0.48b0",
+    "opentelemetry-instrumentation-fastapi>=0.48b0",
+    "opentelemetry-instrumentation-httpx>=0.48b0",
+    "opentelemetry-instrumentation-requests>=0.61b0",
+    "opentelemetry-instrumentation-rq>=0.1.4",
+]
+
+[project.urls]
+Homepage = "https://github.com/majoporse/karaoke-inator"
+Repository = "https://github.com/majoporse/karaoke-inator"
+
+[tool.uv.sources]
+voice_separation_client = { path = "./clients/voice_separation_client" }
+lyrics_client = { path = "./clients/lyrics_client" }
+song_management_client = { path = "./clients/song_management_client" }
+
+
+ [tool.ruff]
+ exclude = ["clients"]
+ 
+ [tool.pyright]
+ ignore = ["clients"]
+ typeCheckingMode = "strict"
+ reportPrivateUsage = false
+ reportUnusedFunction = false
+ reportUnknownMemberType = false

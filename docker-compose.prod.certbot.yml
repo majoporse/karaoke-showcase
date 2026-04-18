@@ -1,0 +1,302 @@
+# Production Docker Compose with Certbot/Let's Encrypt
+# Usage: docker-compose -f docker-compose.prod.certbot.yml up
+#
+# Features:
+# - Certbot automatically obtains and renews SSL certificates from Let's Encrypt
+# - Only nginx ports (80, 443) exposed to the internet
+# - All services communicate internally via docker network
+# - Automatic certificate renewal every 12 hours
+#
+# BEFORE RUNNING:
+# 1. Ensure hatal.cc DNS points to this server's IP
+# 2. Make sure ports 80 and 443 are accessible from the internet
+# 3. Certificates will be stored in ./data/certbot/
+
+services:
+  # Frontend service - builds and serves the React app with Nginx
+  frontend:
+    build:
+      context: ./services/frontend
+      dockerfile: Dockerfile
+    container_name: karaoke-frontend
+    networks:
+      - karaoke
+    # ports:
+    # - "8011:80"
+    restart: unless-stopped
+
+  certbot:
+    image: certbot/certbot:latest
+    container_name: karaoke-certbot
+    volumes:
+      - ./data/certbot:/etc/letsencrypt:rw
+      - ./data/certbot/webroot:/var/www/certbot:rw
+      - ./nginx/init-ssl.sh:/etc/entrypoint.sh
+    entrypoint: /etc/entrypoint.sh
+    depends_on:
+      - nginx
+    networks:
+      - karaoke  
+
+
+  cert-init:
+    image: certbot/certbot:latest
+    container_name: karaoke-cert-init
+    volumes:
+      - ./data/certbot:/etc/letsencrypt
+      - ./data/certbot/webroot:/var/www/certbot
+      - ./nginx/init-ssl.sh:/etc/entrypoint.sh
+    entrypoint: /etc/entrypoint.sh
+    networks:
+      - karaoke
+
+  nginx:
+    image: nginx:latest
+    container_name: karaoke-nginx
+    # Expose HTTP (80) for ACME challenges and HTTPS (443) for application
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8000:8000"
+      - "9000:9000"
+    volumes:
+      # SSL certificates from Certbot
+      - ./data/certbot:/etc/nginx/ssl:ro
+      # Webroot for ACME challenges
+      - ./data/certbot/webroot:/var/www/certbot:ro
+      # Frontend static files
+      - ./services/frontend/build/client:/usr/share/nginx/html:ro
+      # Nginx configuration
+      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+      voice-separation:
+        condition: service_healthy
+      lyrics-extraction:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+      # cert-init:
+        # condition: service_completed_successfully
+    networks:
+      - karaoke
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://localhost/health",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # All services below are INTERNAL ONLY - no ports exposed
+
+  voice-separation:
+    build:
+      context: ./services/voice-separation-service
+      dockerfile: Dockerfile
+    container_name: karaoke-voice-separation
+    # NO ports exposed - only accessible via internal docker network
+    volumes:
+      - voice_model_cache:/app/.cache/huggingface
+    networks:
+      - karaoke
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  lyrics-extraction:
+    build:
+      context: ./services/lyrics-extraction-service
+      dockerfile: Dockerfile
+    container_name: karaoke-lyrics-extraction
+    # NO ports exposed
+    volumes:
+      - lyrics_model_cache:/app/.cache/huggingface
+      - whisper_model_cache:/app/.cache/whisper
+    networks:
+      - karaoke
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  song-management:
+    build:
+      context: ./services/song-management-service
+      dockerfile: Dockerfile
+    container_name: karaoke-song-management
+    # NO ports exposed
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - karaoke
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  minio:
+    image: minio/minio:latest
+    container_name: karaoke-minio
+    # NO ports exposed - only accessible internally
+    # ports:
+    #   - "9000:9000"
+    #   - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - MINIO_SERVER_URL=https://hatal.cc:9000
+      - MINIO_BROWSER_REDIRECT_URL=https://hatal.cc:9001
+    volumes:
+      - minio_data:/data
+    networks:
+      - karaoke
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  orchestrator:
+    build:
+      context: ./services/orchestrator-service
+      dockerfile: Dockerfile
+    container_name: karaoke-orchestrator
+    ports:
+      - "8000:8000"
+    # NO ports exposed - nginx proxies to it
+    environment:
+      - VOICE_SEPARATION_URL=${VOICE_SEPARATION_URL:-http://voice-separation:8001}
+      - LYRICS_EXTRACTION_URL=${LYRICS_EXTRACTION_URL:-http://lyrics-extraction:8002}
+      - SONG_MANAGEMENT_URL=${SONG_MANAGEMENT_URL:-http://song-management:8003}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+    depends_on:
+      song-management:
+        condition: service_healthy
+      voice-separation:
+        condition: service_healthy
+      lyrics-extraction:
+        condition: service_healthy
+      bgutil-pot-provider:
+        condition: service_started
+    networks:
+      - karaoke
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # PO Token Provider for YouTube downloads
+  # Generates proof-of-origin tokens to bypass YouTube bot detection
+  bgutil-pot-provider:
+    image: brainicism/bgutil-ytdlp-pot-provider:latest
+    container_name: karaoke-bgutil-pot-provider
+    networks:
+      - karaoke
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: karaoke-redis
+    # NO ports exposed - only accessible internally
+    volumes:
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+      - redis_data:/data
+    networks:
+      - karaoke
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    command: redis-server --appendonly yes
+
+  rq-worker:
+    build:
+      context: ./services/orchestrator-service
+      dockerfile: worker/Dockerfile
+    container_name: karaoke-rq-worker
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - VOICE_SEPARATION_URL=${VOICE_SEPARATION_URL:-http://voice-separation:8001}
+      - LYRICS_EXTRACTION_URL=${LYRICS_EXTRACTION_URL:-http://lyrics-extraction:8002}
+    depends_on:
+      redis:
+        condition: service_healthy
+      voice-separation:
+        condition: service_healthy
+      lyrics-extraction:
+        condition: service_healthy
+    networks:
+      - karaoke
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:18
+    restart: always
+    shm_size: 128mb
+    # NO ports exposed - only accessible internally
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - pg_data:/var/lib/postgresql/18/docker
+    networks:
+      - karaoke
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+networks:
+  karaoke:
+    driver: bridge
+
+volumes:
+  voice_model_cache:
+    driver: local
+  lyrics_model_cache:
+    driver: local
+  whisper_model_cache:
+    driver: local
+  minio_data:
+    driver: local
+  pg_data:
+    driver: local
+  redis_data:
+    driver: local

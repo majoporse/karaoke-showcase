@@ -1,0 +1,16 @@
+{{- if .Values.minio.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: minio-data
+  labels:
+    {{- include "karaoke-inator.labels" . | nindent 4 }}
+    app: minio
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: {{ .Values.minio.persistence.size }}
+{{- end }}

@@ -1,0 +1,19 @@
+{{- if .Values.bgutiPotProvider.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: bgutil-pot-provider
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "karaoke-inator.labels" . | nindent 4 }}
+    app: bgutil-pot-provider
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.bgutiPotProvider.service.port }}
+      targetPort: {{ .Values.bgutiPotProvider.service.port }}
+      protocol: TCP
+      name: pot-provider
+  selector:
+    app: bgutil-pot-provider
+{{- end }}

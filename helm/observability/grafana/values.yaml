@@ -1,0 +1,114 @@
+# ============================================================================
+# GRAFANA HELM CHART - CUSTOM VALUES
+# ============================================================================
+
+# Grafana community chart dependency values
+grafana:
+  # Number of Grafana replicas
+  replicas: 1
+
+  # Image configuration
+  image:
+    repository: grafana/grafana
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  # Admin user credentials
+  adminUser:
+  adminPassword:
+
+  # Enable persistence
+  persistence:
+    enabled: true
+    type: pvc
+    size: 10Gi
+    storageClassName: local-path
+    accessModes:
+      - ReadWriteOnce
+
+  # Resource limits and requests
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # Service configuration
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 3000
+
+  # Ingress configuration
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    annotations:
+      cert-manager.io/cluster-issuer: zerossl-prod
+    labels: {}
+    path: /
+    pathType: Prefix
+    hosts:
+      - grafana.hatal.cc
+    tls:
+      - secretName: grafana-tls
+        hosts:
+          - grafana.hatal.cc
+
+  # Configure grafana datasources
+  ## ref: http://docs.grafana.org/administration/provisioning/#datasources
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: Prometheus
+          type: prometheus
+          access: proxy
+          orgId: 1
+          url: http://prometheus-server:80
+          basicAuth: false
+          isDefault: false
+          editable: true
+          jsonData:
+            exemplarTraceIdDestinations:
+              - datasourceUid: tempo
+                name: Tempo
+
+        - name: Tempo
+          type: tempo
+          access: proxy
+          orgId: 1
+          url: http://tempo:3200
+          basicAuth: false
+          isDefault: true
+          editable: true
+          jsonData:
+            nodeGraph:
+              enabled: true
+      deleteDatasources: []
+
+  # Enable Grafana dashboard sidecar
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      defaultFolderName: "Karaoke-Inator"
+    datasources:
+      enabled: true
+      label: grafana_datasource
+
+  # Grafana configuration
+  grafana.ini:
+    paths:
+      data: /var/lib/grafana/
+      logs: /var/log/grafana
+      plugins: /var/lib/grafana/plugins
+      provisioning: /etc/grafana/provisioning
+    analytics:
+      check_for_updates: true
+    log:
+      mode: console
+    server:
+      domain: grafana.hatal.cc

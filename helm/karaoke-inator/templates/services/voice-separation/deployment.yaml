@@ -1,0 +1,98 @@
+{{- if .Values.voiceSeparation.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: voice-separation
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "karaoke-inator.labels" . | nindent 4 }}
+    app: voice-separation
+spec:
+  replicas: {{ .Values.voiceSeparation.replicas }}
+  selector:
+    matchLabels:
+      app: voice-separation
+  template:
+    metadata:
+      labels:
+        {{- include "karaoke-inator.labels" . | nindent 8 }}
+        app: voice-separation
+    spec:
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: voice-separation
+        image: "{{ .Values.image.registry }}/{{ .Values.voiceSeparation.image.repository }}:{{ .Values.voiceSeparation.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.voiceSeparation.port }}
+          name: api
+          protocol: TCP
+        env:
+        # MinIO Configuration
+        - name: MINIO_ENDPOINT
+          value: "{{ include "karaoke-inator.minio.endpoint" . }}"
+        - name: MINIO_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: karaoke-secrets
+              key: minio-root-user
+        - name: MINIO_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: karaoke-secrets
+              key: minio-root-password
+        - name: MINIO_SECURE
+          value: "false"
+        - name: MINIO_BUCKET_NAME
+          value: "karaoke"
+        # Server Configuration
+        - name: PORT
+          value: "8001"
+        - name: HOST
+          value: "0.0.0.0"
+        # Logging
+        - name: LOG_LEVEL
+          value: "info"
+        # Telemetry
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "{{ .Values.services.otelCollector.endpoint }}"
+        {{- with .Values.voiceSeparation.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+
+        # Probes
+        {{- if .Values.voiceSeparation.probes }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: {{ .Values.voiceSeparation.port }}
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: {{ .Values.voiceSeparation.port }}
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 3
+        {{- end }}
+
+        {{- if .Values.voiceSeparation.persistence.enabled }}
+        volumeMounts:
+        - name: model-cache
+          mountPath: {{ .Values.voiceSeparation.persistence.mountPath }}
+        {{- end }}
+      {{- if .Values.voiceSeparation.persistence.enabled }}
+      volumes:
+      - name: model-cache
+        persistentVolumeClaim:
+          claimName: voice-separation-model-cache
+      {{- end }}
+{{- end }}

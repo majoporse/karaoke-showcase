@@ -1,0 +1,56 @@
+# Pass through values to the Headlamp dependency
+headlamp:
+  # Core configuration
+  replicaCount: 1
+  
+  # Image settings
+  image:
+    registry: ghcr.io
+    repository: headlamp-k8s/headlamp
+    tag: ""  # defaults to chart appVersion (0.41.0)
+    pullPolicy: IfNotPresent
+  
+  # Service configuration
+  service:
+    type: ClusterIP
+    port: 80
+  
+  # Ingress configuration
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    annotations:
+      cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    hosts:
+      - host: dash.hatal.cc
+        paths:
+          - path: /
+            type: ImplementationSpecific
+    tls:
+      - secretName: headlamp-tls
+        hosts:
+          - dash.hatal.cc
+  
+  # Resource limits
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  
+  # Security context
+  securityContext:
+    runAsNonRoot: false
+    runAsUser: 0
+  
+  # Service account
+  serviceAccount:
+    create: true
+    name: headlamp
+  
+  # Cluster role binding
+  clusterRoleBinding:
+    create: true
+    clusterRoleName: cluster-admin

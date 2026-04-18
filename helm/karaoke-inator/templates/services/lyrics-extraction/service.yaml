@@ -1,0 +1,19 @@
+{{- if .Values.lyricsExtraction.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: lyrics-extraction
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "karaoke-inator.labels" . | nindent 4 }}
+    app: lyrics-extraction
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.lyricsExtraction.port }}
+      targetPort: {{ .Values.lyricsExtraction.port }}
+      protocol: TCP
+      name: api
+  selector:
+    app: lyrics-extraction
+{{- end }}

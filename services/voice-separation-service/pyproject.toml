@@ -1,0 +1,50 @@
+[project]
+name = "voice-separation-service"
+version = "1.0.0"
+description = "Karaoke-Inator Voice Separation Service - AI-powered vocal isolation"
+readme = "README.md"
+requires-python = "~=3.10.0"
+dependencies = [
+    "fastapi~=0.128.0",
+    "librosa~=0.11.0",
+    "python-multipart~=0.0.22",
+    "soundfile~=0.13.1",
+    "torch~=2.8.0",
+    "transformers>=4.0.0",
+    "uvicorn~=0.40.0",
+    "pydantic~=2.9.0",
+    "demucs-infer~=4.1.2",
+    "pydub~=0.25.1",
+    "ffmpeg-python~=0.2.0",
+    "spleeter>=2.4.0",
+    "numpy~=1.24.0",
+    "diffq~=0.2.4",
+    "minio>=7.2.20",
+    "dotenv>=0.9.9",
+    "prometheus-client>=0.21.0",
+    "opentelemetry-api>=1.27.0",
+    "opentelemetry-sdk>=1.27.0",
+    "opentelemetry-exporter-otlp-proto-grpc>=0.48b0",
+    "opentelemetry-instrumentation-fastapi>=0.48b0",
+    "opentelemetry-instrumentation-httpx>=0.48b0",
+]
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cpu" },
+    # { index = "pytorch-cu128" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[project.urls]
+Homepage = "https://github.com/majoporse/karaoke-inator"
+Repository = "https://github.com/majoporse/karaoke-inator"

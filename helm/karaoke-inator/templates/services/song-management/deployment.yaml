@@ -1,0 +1,103 @@
+{{- if .Values.songManagement.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: song-management
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "karaoke-inator.labels" . | nindent 4 }}
+    app: song-management
+spec:
+  replicas: {{ .Values.songManagement.replicas }}
+  selector:
+    matchLabels:
+      app: song-management
+  template:
+    metadata:
+      labels:
+        {{- include "karaoke-inator.labels" . | nindent 8 }}
+        app: song-management
+    spec:
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: song-management
+        image: "{{ .Values.image.registry }}/{{ .Values.songManagement.image.repository }}:{{ .Values.songManagement.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.songManagement.port }}
+          name: api
+          protocol: TCP
+        env:
+        # Database Configuration
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: karaoke-secrets
+              key: postgresql-url
+
+        # Elasticsearch Configuration
+        - name: ELASTICSEARCH_URL
+          value: "{{ .Values.services.elasticsearch.url }}"
+        - name: ELASTICSEARCH_INDEX 
+          value: "lyrics"
+        - name: ELASTICSEARCH_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: karaoke-secrets
+              key: elastic-user
+        - name: ELASTICSEARCH_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: karaoke-secrets
+              key: elastic-password
+
+        # MinIO Configuration
+        - name: MINIO_ENDPOINT
+          value: {{ .Values.services.minio.url }}
+        - name: MINIO_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: karaoke-secrets
+              key: minio-root-user
+        - name: MINIO_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: karaoke-secrets
+              key: minio-root-password
+        - name: MINIO_SECURE
+          value: "false"
+        - name: MINIO_BUCKET_NAME
+          value: "karaoke"
+
+        # Application Configuration
+        - name: ENVIRONMENT
+          value: "production"
+        - name: LOG_LEVEL
+          value: "INFO"
+        # Telemetry
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "{{ .Values.services.otelCollector.endpoint }}"
+        {{- with .Values.songManagement.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: {{ .Values.songManagement.port }}
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: {{ .Values.songManagement.port }}
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 3
+{{- end }}

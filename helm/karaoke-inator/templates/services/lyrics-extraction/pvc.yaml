@@ -1,0 +1,16 @@
+{{- if .Values.lyricsExtraction.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: lyrics-extraction-model-cache
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "karaoke-inator.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: {{ .Values.lyricsExtraction.persistence.size }}
+{{- end }}

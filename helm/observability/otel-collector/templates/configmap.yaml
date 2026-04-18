@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "otel-collector.fullname" . }}-config
+  labels:
+    {{- include "otel-collector.labels" . | nindent 4 }}
+data:
+  otel-collector-config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: {{ .Values.config.receivers.otlp.protocols.grpc.endpoint }}
+          http:
+            endpoint: {{ .Values.config.receivers.otlp.protocols.http.endpoint }}
+
+    processors:
+      batch:
+        timeout: {{ .Values.config.processors.batch.timeout }}
+        send_batch_size: {{ .Values.config.processors.batch.send_batch_size }}
+      memory_limiter:
+        check_interval: {{ .Values.config.processors.memory_limiter.check_interval }}
+        limit_mib: {{ .Values.config.processors.memory_limiter.limit_mib }}
+        spike_limit_mib: {{ .Values.config.processors.memory_limiter.spike_limit_mib }}
+
+    exporters:
+      otlp:
+        endpoint: {{ .Values.config.exporters.otlp.endpoint }}
+        tls:
+          insecure: {{ .Values.config.exporters.otlp.tls.insecure }}
+      prometheusremotewrite:
+        endpoint: {{ .Values.config.exporters.prometheusremotewrite.endpoint }}
+        tls:
+          insecure: {{ .Values.config.exporters.prometheusremotewrite.tls.insecure }}
+
+    service:
+      pipelines:
+        traces:
+          receivers:
+            - otlp
+          processors:
+            - memory_limiter
+            - batch
+          exporters:
+            - otlp
+        metrics:
+          receivers:
+            - otlp
+          processors:
+            - memory_limiter
+            - batch
+          exporters:
+            - prometheusremotewrite

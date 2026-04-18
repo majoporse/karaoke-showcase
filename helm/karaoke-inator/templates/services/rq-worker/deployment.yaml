@@ -1,0 +1,76 @@
+{{- if .Values.rqWorker.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rq-worker
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "karaoke-inator.labels" . | nindent 4 }}
+    app: rq-worker
+spec:
+  replicas: {{ .Values.rqWorker.replicas }}
+  selector:
+    matchLabels:
+      app: rq-worker
+  template:
+    metadata:
+      labels:
+        {{- include "karaoke-inator.labels" . | nindent 8 }}
+        app: rq-worker
+    spec:
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: rq-worker
+        image: "{{ .Values.image.registry }}/{{ .Values.rqWorker.image.repository }}:{{ .Values.rqWorker.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        env:
+        # Redis configuration
+        - name: REDIS_URL
+          value: "{{ .Values.services.redis.url }}"
+        # Service discovery URLs
+        - name: VOICE_SEPARATION_URL
+          value: "http://voice-separation:{{ .Values.voiceSeparation.port }}"
+        - name: LYRICS_EXTRACTION_URL
+          value: "http://lyrics-extraction:{{ .Values.lyricsExtraction.port }}"
+        - name: SONG_MANAGEMENT_URL
+          value: "http://song-management:{{ .Values.songManagement.port }}"
+
+        # MinIO Configuration
+        - name: MINIO_ENDPOINT
+          value: {{ .Values.services.minio.url }}
+        - name: MINIO_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: karaoke-secrets
+              key: minio-root-user
+        - name: MINIO_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: karaoke-secrets
+              key: minio-root-password
+        - name: MINIO_SECURE
+          value: "false"
+        - name: MINIO_BUCKET_NAME
+          value: "karaoke"
+        
+        # Youtube
+        - name: POT_URL
+          value: "http://bgutil-pot-provider:4416"
+        - name: PROXY_URL
+          value: "http://eofatocq:wh0gym91gpq5@31.59.20.176:6754"
+
+        # Logging
+        - name: LOG_LEVEL
+          value: "INFO"
+        # Telemetry
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "{{ .Values.services.otelCollector.endpoint }}"
+        {{- with .Values.rqWorker.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        # RQ worker doesn't expose health endpoints, so no probes
+{{- end }}

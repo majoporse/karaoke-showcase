@@ -1,0 +1,47 @@
+# Elasticsearch and Kibana configuration using ECK operator
+
+# Namespace where Elasticsearch and Kibana will be deployed
+namespace: elasticsearch
+
+eck-stack:
+  eck-elasticsearch:
+    enabled: true
+    version: "8.15.0"
+    fullnameOverride: elasticsearch
+    auth:
+      fileRealm:
+        - secretName: kibana-admin-basic-auth
+    http:
+      tls:
+        selfSignedCertificate:
+          disabled: true
+
+  eck-kibana:
+    enabled: true
+    version: "8.15.0"
+    elasticsearchRef:
+      name: elasticsearch
+    config:
+      server:
+        publicBaseUrl: "https://kibana.hatal.cc"
+    # networking
+    http:
+      tls:
+        selfSignedCertificate:
+          disabled: true
+    ingress:
+      enabled: true
+      annotations:
+        cert-manager.io/cluster-issuer: letsencrypt-prod
+      hosts:
+        - host: "kibana.hatal.cc"
+          path: /
+      tls:
+        enabled: true
+        secretName: kibana-tls
+        issuer: letsencrypt-prod
+
+kibana:
+  auth:
+    username: ""
+    password: ""

@@ -1,0 +1,82 @@
+# ============================================================================
+# PROMETHEUS HELM CHART - CUSTOM VALUES
+# ============================================================================
+
+# Global Prometheus configuration (at chart root level)
+global:
+  scrape_interval: 1m
+  scrape_timeout: 10s
+  evaluation_interval: 1m
+
+# Prometheus community chart dependency values
+prometheus:
+  # Enable RBAC
+  rbac:
+    create: true
+
+  # Replicas
+  replicas: 1
+
+  # Data retention
+  retention: "90d"
+
+  # Prometheus server configuration
+  server:
+    # Enable lifecycle API for configuration reloads
+    extraFlags:
+      - web.enable-lifecycle
+      - web.enable-remote-write-receiver
+
+    # Persistence
+    persistentVolume:
+      enabled: true
+      size: 2Gi
+      storageClassName: local-path
+
+    # Service
+    service:
+      enabled: true
+      type: ClusterIP
+      port: 80
+      targetPort: 9090
+
+    # Resources
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+
+  # Alert rules - disable defaults
+  alertmanagerFiles:
+    alertmanager.yml: {}
+
+  # Disable extra configs to avoid duplication
+  extraScrapeConfigs: ""
+
+  # Server configuration
+  serverFiles:
+    prometheus.yml:
+      # Note: global section is auto-provided by chart, do not override
+      scrape_configs:
+        - job_name: otel-collector
+          static_configs:
+            - targets:
+                - otel-collector:8889
+
+  # Sub-chart configurations
+  alertmanager:
+    enabled: false
+
+  kube-state-metrics:
+    enabled: true
+
+  prometheus-node-exporter:
+    enabled: true
+    rbac:
+      pspEnabled: false
+
+  prometheus-pushgateway:
+    enabled: true

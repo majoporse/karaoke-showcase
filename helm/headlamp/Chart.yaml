@@ -1,0 +1,10 @@
+apiVersion: v2
+name: headlamp
+description: Lightweight Kubernetes UI wrapper chart using official Headlamp Helm chart
+type: application
+version: 1.0.0
+appVersion: "0.41.0"
+dependencies:
+  - name: headlamp
+    version: "0.41.0"
+    repository: "https://kubernetes-sigs.github.io/headlamp/"

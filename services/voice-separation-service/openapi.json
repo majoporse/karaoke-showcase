@@ -1,0 +1,244 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Karaoke-Inator Voice Separation",
+    "description": "AI-powered voice separation service that separates vocals from background music using advanced audio processing",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/separate-voice": {
+      "post": {
+        "tags": [
+          "Voice Separation"
+        ],
+        "summary": "Separate vocals from music",
+        "description": "Accepts an audio file and returns a path to object storage for the separated vocals and accompaniment tracks using the configured model",
+        "operationId": "separate_voice_unified_separate_voice_post",
+        "parameters": [
+          {
+            "name": "minio_path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Minio Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Voice separation successful - returns ZIP file",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeparateVoiceResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid file type (not an audio file)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error processing audio file",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Voice separation service not ready",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/separate-voice/config": {
+      "get": {
+        "tags": [
+          "Voice Separation"
+        ],
+        "summary": "Get voice separation configuration",
+        "description": "Returns the current voice separation configuration including the active model",
+        "operationId": "get_configuration_separate_voice_config_get",
+        "responses": {
+          "200": {
+            "description": "Configuration information",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Health check",
+        "description": "Check if the voice separation service is healthy and ready",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/openapi.yaml": {
+      "get": {
+        "summary": "Get Openapi Yaml",
+        "operationId": "get_openapi_yaml_openapi_yaml_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ErrorResponse": {
+        "properties": {
+          "detail": {
+            "type": "string",
+            "title": "Detail",
+            "description": "Error description",
+            "example": "Invalid file type provided"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code",
+            "description": "Optional error code for programmatic handling",
+            "example": "INVALID_FILE_TYPE"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp",
+            "description": "When the error occurred"
+          }
+        },
+        "type": "object",
+        "required": [
+          "detail"
+        ],
+        "title": "ErrorResponse",
+        "description": "Standard error response model."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "SeparateVoiceResponse": {
+        "properties": {
+          "vocals_path": {
+            "type": "string",
+            "title": "Vocals Path",
+            "description": "Object storage path to the separated vocals file"
+          },
+          "accompaniment_path": {
+            "type": "string",
+            "title": "Accompaniment Path",
+            "description": "Object storage path to the separated accompaniment file"
+          }
+        },
+        "type": "object",
+        "required": [
+          "vocals_path",
+          "accompaniment_path"
+        ],
+        "title": "SeparateVoiceResponse"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

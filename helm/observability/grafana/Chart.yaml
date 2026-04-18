@@ -1,0 +1,21 @@
+apiVersion: v2
+name: grafana
+description: A Helm chart for Grafana with Karaoke-Inator customizations
+type: application
+version: 1.0.0
+appVersion: "11.0.0"
+keywords:
+  - grafana
+  - monitoring
+  - dashboards
+home: https://grafana.com
+sources:
+  - https://github.com/grafana/grafana
+  - https://github.com/grafana-community/helm-charts
+maintainers:
+  - name: Karaoke-Inator
+dependencies:
+  - name: grafana
+    version: "7.3.x"
+    repository: "https://grafana.github.io/helm-charts"
+    alias: grafana

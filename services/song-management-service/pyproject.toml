@@ -1,0 +1,42 @@
+
+[project]
+name = "song-management-service"
+version = "1.0.0"
+description = "Karaoke-Inator Song Management Service - CRUD API for songs, versions, processing results, and lyrics"
+readme = "README.md"
+requires-python = ">=3.12.0"
+dependencies = [
+    "fastapi~=0.128.0",
+    "pyyaml~=6.0.0",
+    "sqlalchemy~=2.0.36",
+    "asyncpg~=0.30.0",
+    "elasticsearch~=8.15.1",
+    "pydantic~=2.10.4",
+    "python-multipart~=0.0.22",
+    "python-dotenv~=1.0.0",
+    "uvicorn~=0.40.0",
+    "dishka~=1.3.0",
+    "alembic>=1.18.0",
+    "psycopg2-binary>=2.9.0",
+    "minio~=7.2.20",
+    "pyright>=1.1.408",
+    "prometheus-client>=0.21.0",
+    "httpx~=0.28.1",
+    "opentelemetry-api>=1.27.0",
+    "opentelemetry-sdk>=1.27.0",
+    "opentelemetry-exporter-otlp-proto-grpc>=0.48b0",
+    "opentelemetry-instrumentation-fastapi>=0.48b0",
+    "opentelemetry-instrumentation-httpx>=0.48b0",
+    "opentelemetry-instrumentation-sqlalchemy>=0.48b0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "alembic>=1.18.0",
+    "psycopg2-binary>=2.9.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/majoporse/karaoke-inator"
+Repository = "https://github.com/majoporse/karaoke-inator"
+

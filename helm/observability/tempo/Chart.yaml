@@ -1,0 +1,22 @@
+apiVersion: v2
+
+name: tempo
+description: A Helm chart for Grafana Tempo with Karaoke-Inator customizations
+type: application
+version: 1.0.0
+appVersion: "2.8.2"
+keywords:
+  - tempo
+  - distributed-tracing
+  - traces
+home: https://grafana.com/oss/tempo/
+sources:
+  - https://github.com/grafana/tempo
+  - https://github.com/grafana-community/helm-charts
+maintainers:
+  - name: Karaoke-Inator
+dependencies:
+  - name: tempo
+    version: "1.24.x"
+    repository: "https://grafana.github.io/helm-charts"
+    alias: tempo

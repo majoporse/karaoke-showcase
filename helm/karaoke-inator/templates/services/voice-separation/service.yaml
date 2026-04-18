@@ -1,0 +1,19 @@
+{{- if .Values.voiceSeparation.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: voice-separation
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "karaoke-inator.labels" . | nindent 4 }}
+    app: voice-separation
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.voiceSeparation.port }}
+      targetPort: {{ .Values.voiceSeparation.port }}
+      protocol: TCP
+      name: api
+  selector:
+    app: voice-separation
+{{- end }}

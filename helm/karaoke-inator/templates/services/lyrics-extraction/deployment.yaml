@@ -1,0 +1,98 @@
+{{- if .Values.lyricsExtraction.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lyrics-extraction
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "karaoke-inator.labels" . | nindent 4 }}
+    app: lyrics-extraction
+spec:
+  replicas: {{ .Values.lyricsExtraction.replicas }}
+  selector:
+    matchLabels:
+      app: lyrics-extraction
+  template:
+    metadata:
+      labels:
+        {{- include "karaoke-inator.labels" . | nindent 8 }}
+        app: lyrics-extraction
+    spec:
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: lyrics-extraction
+        image: "{{ .Values.image.registry }}/{{ .Values.lyricsExtraction.image.repository }}:{{ .Values.lyricsExtraction.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.lyricsExtraction.port }}
+          name: api
+          protocol: TCP
+        env:
+        # MinIO Configuration
+        - name: MINIO_ENDPOINT
+          value: "{{ include "karaoke-inator.minio.endpoint" . }}"
+        - name: MINIO_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: karaoke-secrets
+              key: minio-root-user
+        - name: MINIO_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: karaoke-secrets
+              key: minio-root-password
+        - name: MINIO_SECURE
+          value: "false"
+        - name: MINIO_BUCKET_NAME
+          value: "karaoke"
+        # Server Configuration
+        - name: PORT
+          value: "8002"
+        - name: HOST
+          value: "0.0.0.0"
+        # Logging
+        - name: LOG_LEVEL
+          value: "info"
+        # Telemetry
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "{{ .Values.services.otelCollector.endpoint }}"
+        {{- with .Values.lyricsExtraction.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+
+        # Probes
+        {{- if .Values.lyricsExtraction.probes -}}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: {{ .Values.lyricsExtraction.port }}
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: {{ .Values.lyricsExtraction.port }}
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 3
+        {{- end -}}
+
+        {{- if .Values.lyricsExtraction.persistence.enabled }}
+        volumeMounts:
+        - name: model-cache
+          mountPath: {{ .Values.lyricsExtraction.persistence.mountPath }}
+        {{- end }}
+      {{- if .Values.lyricsExtraction.persistence.enabled }}
+      volumes:
+      - name: model-cache
+        persistentVolumeClaim:
+          claimName: lyrics-extraction-model-cache
+      {{- end }}
+{{- end }}

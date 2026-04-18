@@ -1,0 +1,93 @@
+# Harbor Registry Helm Chart Configuration
+
+# Pass through values to the Harbor dependency
+harbor:
+  # External URL for Harbor
+  externalURL: https://registry.hatal.cc
+
+  # Expose configuration
+  expose:
+    type: ingress
+    tls:
+      enabled: true
+      certSource: secret
+      secret:
+        secretName: harbor-tls
+    ingress:
+      hosts:
+        core: registry.hatal.cc
+      className: traefik
+      annotations:
+        cert-manager.io/cluster-issuer: "letsencrypt-prod"
+
+  # Harbor admin password
+  harborAdminPassword: ""
+
+  # Persistence configuration
+  persistence:
+    enabled: true
+    resourcePolicy: keep
+    persistentVolumeClaim:
+      registry:
+        storageClass: local-path
+        size: 50Gi
+      jobservice:
+        jobLog:
+          storageClass: local-path
+          size: 10Gi
+      database:
+        storageClass: local-path
+        size: 10Gi
+      redis:
+        storageClass: local-path
+        size: 5Gi
+      trivy:
+        storageClass: local-path
+        size: 5Gi
+
+  # Resource limits for core components
+  core:
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+
+  registry:
+    registry:
+      resources:
+        requests:
+          cpu: 250m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+
+  portal:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 250m
+        memory: 512Mi
+
+  jobservice:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 250m
+        memory: 512Mi
+
+  trivy:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 250m
+        memory: 512Mi

@@ -1,0 +1,28 @@
+apiVersion: v2
+name: karaoke-inator
+description: A Kubernetes Helm chart for deploying Karaoke-Inator microservices on on-premises infrastructure
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+home: https://github.com/majoporse/karaoke-inator
+sources:
+  - https://github.com/majoporse/karaoke-inator
+keywords:
+  - karaoke
+  - microservices
+  - audio-processing
+  - voice-separation
+  - lyrics-extraction
+maintainers:
+  - name: Karaoke-Inator Team
+    email: admin@hatal.cc
+dependencies:
+  - name: postgresql
+    version: "18.5.16"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: postgresql.enabled
+  - name: redis
+    version: "25.3.10"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: redis.enabled
+

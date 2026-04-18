@@ -1,0 +1,15 @@
+# SSL Certificates - Should never be committed
+ssl/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.bak
+*~
+certbot

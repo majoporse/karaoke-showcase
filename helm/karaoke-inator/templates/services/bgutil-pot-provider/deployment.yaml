@@ -1,0 +1,33 @@
+{{- if .Values.bgutiPotProvider.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bgutil-pot-provider
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "karaoke-inator.labels" . | nindent 4 }}
+    app: bgutil-pot-provider
+spec:
+  replicas: {{ .Values.bgutiPotProvider.replicas }}
+  selector:
+    matchLabels:
+      app: bgutil-pot-provider
+  template:
+    metadata:
+      labels:
+        {{- include "karaoke-inator.labels" . | nindent 8 }}
+        app: bgutil-pot-provider
+    spec:
+      containers:
+      - name: pot-provider
+        image: "{{ .Values.bgutiPotProvider.image.repository }}:{{ .Values.bgutiPotProvider.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.bgutiPotProvider.service.port }}
+          name: pot-provider
+          protocol: TCP
+        {{- with .Values.bgutiPotProvider.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+{{- end }}

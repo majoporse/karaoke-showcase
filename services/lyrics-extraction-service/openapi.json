@@ -1,0 +1,407 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Karaoke-Inator Lyrics Extraction",
+    "description": "AI-powered lyrics extraction service using Whisper speech recognition to transcribe audio to text",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/extract-lyrics": {
+      "post": {
+        "tags": [
+          "Lyrics Extraction"
+        ],
+        "summary": "Extract plain lyrics",
+        "description": "Extract lyrics as plain text from an audio file using Whisper speech recognition",
+        "operationId": "extract_lyrics_extract_lyrics_post",
+        "parameters": [
+          {
+            "name": "minio_path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Minio Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lyrics extracted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LyricsExtractionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid file type (not an audio file)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error processing audio file",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Speech recognition model not available",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/extract-lyrics/with-timestamps": {
+      "post": {
+        "tags": [
+          "Lyrics Extraction"
+        ],
+        "summary": "Extract lyrics with timestamps",
+        "description": "Extract lyrics with timestamps from an audio file using chunked Whisper processing",
+        "operationId": "extract_lyrics_with_timestamps_extract_lyrics_with_timestamps_post",
+        "parameters": [
+          {
+            "name": "minio_path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Minio Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lyrics with timestamps extracted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LyricsWithTimestampsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid file type (not an audio file)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error processing audio file",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Speech recognition model not available",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Health check",
+        "description": "Check if the lyrics extraction service is healthy and model is loaded",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/openapi.yaml": {
+      "get": {
+        "summary": "Get Openapi Yaml",
+        "operationId": "get_openapi_yaml_openapi_yaml_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Chunk": {
+        "properties": {
+          "start": {
+            "type": "number",
+            "title": "Start",
+            "description": "Start time of the segment in seconds",
+            "example": 0.0
+          },
+          "end": {
+            "type": "number",
+            "title": "End",
+            "description": "End time of the segment in seconds",
+            "example": 12.92
+          },
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "Lyrics text for this segment",
+            "example": "Wake up in the mornin' feelin' like P. Diddy"
+          }
+        },
+        "type": "object",
+        "required": [
+          "start",
+          "end",
+          "text"
+        ],
+        "title": "Chunk",
+        "description": "A segment of lyrics with timestamp range."
+      },
+      "ErrorResponse": {
+        "properties": {
+          "detail": {
+            "type": "string",
+            "title": "Detail",
+            "description": "Error description",
+            "example": "Invalid YouTube URL provided"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code",
+            "description": "Optional error code for programmatic handling",
+            "example": "INVALID_URL"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp",
+            "description": "When the error occurred"
+          }
+        },
+        "type": "object",
+        "required": [
+          "detail"
+        ],
+        "title": "ErrorResponse",
+        "description": "Standard error response model."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "LyricsExtractionResponse": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "Extracted lyrics as plain text",
+            "example": "Never gonna give you up\nNever gonna let you down"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds",
+            "description": "Duration of the audio in seconds",
+            "example": 213.5
+          },
+          "sample_rate": {
+            "type": "integer",
+            "title": "Sample Rate",
+            "description": "Sample rate used for processing (Hz)",
+            "example": 16000
+          }
+        },
+        "type": "object",
+        "required": [
+          "text",
+          "sample_rate"
+        ],
+        "title": "LyricsExtractionResponse",
+        "description": "Response model for plain lyrics extraction."
+      },
+      "LyricsWithTimestampsResponse": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "Full transcribed text",
+            "example": "Never gonna give you up..."
+          },
+          "chunks": {
+            "items": {
+              "$ref": "#/components/schemas/Chunk"
+            },
+            "type": "array",
+            "title": "Chunks",
+            "description": "List of lyrics segments with timestamps",
+            "example": [
+              {
+                "end": 3.5,
+                "start": 0.0,
+                "text": "Never gonna give you up"
+              },
+              {
+                "end": 7.0,
+                "start": 3.5,
+                "text": "Never gonna let you down"
+              }
+            ]
+          },
+          "total_duration_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Duration Seconds",
+            "description": "Total duration of the audio in seconds",
+            "example": 213.5
+          },
+          "sample_rate": {
+            "type": "integer",
+            "title": "Sample Rate",
+            "description": "Sample rate used for processing (Hz)",
+            "example": 16000
+          }
+        },
+        "type": "object",
+        "required": [
+          "text",
+          "chunks",
+          "sample_rate"
+        ],
+        "title": "LyricsWithTimestampsResponse",
+        "description": "Response model for lyrics extraction with timestamps."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

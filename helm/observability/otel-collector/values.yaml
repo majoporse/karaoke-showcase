@@ -1,0 +1,83 @@
+# ============================================================================
+# OPENTELEMETRY COLLECTOR HELM CHART - VALUES
+# ============================================================================
+
+# Image configuration
+image:
+  repository: otel/opentelemetry-collector
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+# Deployment settings
+replicaCount: 1
+nameOverride: ""
+fullnameOverride: ""
+
+# Resource limits and requests
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 200m
+    memory: 256Mi
+
+# Service configuration
+service:
+  type: ClusterIP
+  annotations: {}
+
+# OTLP Receiver ports
+ports:
+  otlp_grpc: 4317
+  otlp_http: 4318
+
+# OpenTelemetry Collector configuration
+config:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+
+  processors:
+    batch:
+      timeout: 10s
+      send_batch_size: 1024
+    memory_limiter:
+      check_interval: 5s
+      limit_mib: 512
+      spike_limit_mib: 128
+
+  exporters:
+    otlp:
+      endpoint: tempo:4317
+      tls:
+        insecure: true
+    prometheusremotewrite:
+      endpoint: http://prometheus-server:80/api/v1/write
+      tls:
+        insecure: true
+
+  service:
+    pipelines:
+      traces:
+        receivers:
+          - otlp
+        processors:
+          - memory_limiter
+          - batch
+        exporters:
+          - otlp
+      metrics:
+        receivers:
+          - otlp
+        processors:
+          - memory_limiter
+          - batch
+        exporters:
+          - prometheusremotewrite
+
+

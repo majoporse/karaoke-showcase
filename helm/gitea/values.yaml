@@ -1,0 +1,46 @@
+gitea:
+  admin:
+    username: admin
+    password: "lokoloko_karaoke"
+    email: "admin@hatal.cc"
+  config:
+    server:
+      DOMAIN: "git.hatal.cc"
+      SSH_DOMAIN: "git.hatal.cc"
+      ROOT_URL: "https://git.hatal.cc"
+      PROTOCOL: http
+      HTTP_PORT: 3000
+
+service:
+  http:
+    port: 80
+  https:
+    port: 443
+
+ingress:
+  enabled: true
+  className: traefik
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: git.hatal.cc
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: gitea-tls
+      hosts:
+        - git.hatal.cc
+
+persistence:
+  enabled: true
+  size: 20Gi
+  storageClassName: local-path
+
+postgresql:
+  enabled: true
+  auth:
+    password: "lokoloko_karaoke"
+
+postgresql-ha:
+  enabled: false

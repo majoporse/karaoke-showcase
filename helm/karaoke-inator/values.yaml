@@ -1,0 +1,236 @@
+global:
+  namespace: karaoke
+  domain: "hatal.cc"
+  environment: production
+  letsencryptEmail: "admin@hatal.cc"
+
+image:
+  registry: "registry.hatal.cc"
+  pullPolicy: Always
+  pullSecrets:
+    - name: registry-secret
+  auth:
+    username: ""
+    password: ""
+
+# ============================================================================
+# INTERNAL SERVICES CONFIGURATION
+# ============================================================================
+services:
+  minio:
+    url: "minio:9000"
+
+  elasticsearch:
+    url: "http://elasticsearch-es-http.elastic.svc.cluster.local:9200"
+    auth:
+      user:
+      password: ""
+
+  postgresql:
+    host: "karaoke-postgresql"
+    port: 5432
+    database: "karaoke"
+
+  redis:
+    url: "redis://karaoke-redis-master:6379/0"
+
+  otelCollector:
+    endpoint: "http://otel-collector.observability.svc.cluster.local:4317"
+
+# ============================================================================
+# POSTGRESQL DATABASE CONFIGURATION (Bitnami Chart)
+# ============================================================================
+postgresql:
+  enabled: true
+  auth:
+    username: ""
+    password: ""
+    database: ""
+  primary:
+    persistence:
+      enabled: true
+      size: "10Gi"
+      storageClass: "local-path"
+      volumeName: "pg-data"
+  metrics:
+    enabled: false
+
+# ============================================================================
+# REDIS CACHE CONFIGURATION (Bitnami Chart)
+# ============================================================================
+redis:
+  enabled: true
+  auth:
+    enabled: false
+  architecture: standalone
+  master:
+    persistence:
+      enabled: true
+      size: "1Gi"
+      storageClass: "local-path"
+  metrics:
+    enabled: false
+
+# ============================================================================
+# MINIO CONFIGURATION (Standard Deployment)
+# ============================================================================
+minio:
+  enabled: true
+
+  auth:
+    rootUser: ""
+    rootPassword: ""
+
+  image:
+    repository: minio/minio
+    tag: latest
+
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "1000m"
+      memory: "2Gi"
+
+  persistence:
+    size: "100Gi"
+
+# ============================================================================
+# BGUTIL POT PROVIDER (YouTube PoT Tokens)
+# ============================================================================
+bgutiPotProvider:
+  enabled: true
+  image:
+    repository: "brainicism/bgutil-ytdlp-pot-provider"
+    tag: "latest"
+  replicas: 1
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "250m"
+      memory: "512Mi"
+  service:
+    port: 4416
+
+# ============================================================================
+# MICROSERVICES CONFIGURATION
+# ============================================================================
+
+# Voice Separation Service
+voiceSeparation:
+  enabled: true
+  image:
+    repository: "karaoke/voice-separation-service"
+    tag: "latest"
+  replicas: 1
+  port: 8001
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "2Gi"
+    # limits:
+    # cpu: "8000m"
+    # memory: "3Gi"
+  persistence:
+    enabled: true
+    size: "10Gi"
+    storageClass: "local-storage"
+    mountPath: "/app/.cache/huggingface"
+    hostPath: "/data/models/voice-separation"
+  probes: false
+
+# Lyrics Extraction Service
+lyricsExtraction:
+  enabled: true
+  image:
+    repository: "karaoke/lyrics-extraction-service"
+    tag: "latest"
+  replicas: 1
+  port: 8002
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "2Gi"
+    # limits:
+    # cpu: "8000m"
+    # memory: "3Gi"
+  persistence:
+    enabled: true
+    size: "10Gi"
+    storageClass: "local-storage"
+    mountPath: "/app/.cache/huggingface"
+    hostPath: "/data/models/lyrics-extraction"
+  probes: false
+
+# Song Management Service
+songManagement:
+  enabled: true
+  image:
+    repository: "karaoke/song-management-service"
+    tag: "latest"
+  replicas: 1
+  port: 8003
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+
+# Orchestrator Service (Main Gateway)
+orchestrator:
+  enabled: true
+  image:
+    repository: "karaoke/orchestrator-service"
+    tag: "latest"
+  replicas: 1
+  port: 8000
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+
+# RQ Worker (Background Job Processing)
+rqWorker:
+  enabled: true
+  image:
+    repository: "karaoke/rq-worker"
+    dockerfile: "worker/Dockerfile"
+    tag: "latest"
+  replicas: 1
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+  # Log level: DEBUG, INFO, WARNING, ERROR
+  logLevel: "INFO"
+
+# Frontend (React + Nginx)
+frontend:
+  enabled: true
+  image:
+    repository: "karaoke/karaoke-frontend"
+    tag: "latest"
+  replicas: 1
+  port: 80
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "250m"
+      memory: "512Mi"
+
+networking:
+  ingress:
+    enabled: true

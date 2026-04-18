@@ -1,0 +1,26 @@
+# Voice Separation Configuration
+# This file specifies which model to use for voice separation
+# Only one model can be active at a time
+
+voice_separation:
+  # Options: "demucs" or "spleeter"
+  active_model: "spleeter"
+  
+  demucs:
+    # device: "cuda"
+    device: "cpu"
+    split: true
+    channels: 2
+    # Available Demucs models:
+    # - htdemucs (default, general purpose)
+    # - htdemucs_ft (fine-tuned, good for music)
+    # - mdx (good separation)
+    # - mdx_extra (best quality, slowest)
+    # model: "htdemucs_ft"
+    model: "htdemucs"
+    progress: false
+    
+  spleeter:
+    params_descriptor: "spleeter:2stems"
+    mwf: true
+    multiprocess: true

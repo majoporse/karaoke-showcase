@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Karaoke Orchestrator Test Interface</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f5f5f5;
+      }
+      .container {
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      h1 {
+        color: #333;
+        text-align: center;
+        margin-bottom: 30px;
+      }
+      .form-group {
+        margin-bottom: 20px;
+      }
+      label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+        color: #555;
+      }
+      input[type="text"] {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #ddd;
+        border-radius: 5px;
+        font-size: 16px;
+        box-sizing: border-box;
+      }
+      input[type="text"]:focus {
+        border-color: #007bff;
+        outline: none;
+      }
+      button {
+        background-color: #007bff;
+        color: white;
+        padding: 12px 30px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        width: 100%;
+        margin-bottom: 10px;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+      button:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
+      }
+      .status {
+        padding: 10px;
+        border-radius: 5px;
+        margin: 10px 0;
+        display: none;
+      }
+      .status.success {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+      .status.error {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+      }
+      .status.loading {
+        background-color: #d1ecf1;
+        color: #0c5460;
+        border: 1px solid #bee5eb;
+      }
+      .results {
+        margin-top: 20px;
+        display: none;
+      }
+      .result-section {
+        background: #f8f9fa;
+        padding: 15px;
+        margin: 10px 0;
+        border-radius: 5px;
+        border-left: 4px solid #007bff;
+      }
+      .result-section h3 {
+        margin-top: 0;
+        color: #333;
+      }
+      .lyrics-text {
+        background: white;
+        padding: 15px;
+        border-radius: 5px;
+        border: 1px solid #ddd;
+        white-space: pre-wrap;
+        max-height: 300px;
+        overflow-y: auto;
+      }
+      .download-btn {
+        background-color: #28a745;
+        color: white;
+        padding: 8px 16px;
+        text-decoration: none;
+        border-radius: 5px;
+        display: inline-block;
+        margin: 5px 0;
+      }
+      .download-btn:hover {
+        background-color: #218838;
+      }
+      .timestamp-item {
+        margin: 5px 0;
+        padding: 5px;
+        background: white;
+        border-radius: 3px;
+      }
+      .timestamp-time {
+        font-weight: bold;
+        color: #007bff;
+      }
+      .health-status {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+      }
+      .service-status {
+        display: inline-block;
+        padding: 5px 10px;
+        border-radius: 3px;
+        margin: 5px;
+        font-size: 12px;
+      }
+      .service-status.healthy {
+        background: #d4edda;
+        color: #155724;
+      }
+      .service-status.unhealthy {
+        background: #f8d7da;
+        color: #721c24;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🎵 Karaoke Orchestrator Test Interface</h1>
+
+      <div class="health-status" id="healthStatus">
+        <h3>Service Health</h3>
+        <div id="serviceStatus">Checking services...</div>
+      </div>
+
+      <form id="processForm">
+        <div class="form-group">
+          <label for="youtubeUrl">YouTube URL:</label>
+          <input
+            type="text"
+            id="youtubeUrl"
+            name="youtubeUrl"
+            placeholder="https://www.youtube.com/watch?v=..."
+            required
+          />
+        </div>
+        <button type="submit" id="processBtn">Process Audio</button>
+      </form>
+
+      <div class="status" id="status"></div>
+
+      <div class="results" id="results">
+        <div
+          class="result-section"
+          id="voiceSeparationResult"
+          style="display: none"
+        >
+          <h3>🎤 Voice Separation</h3>
+          <p>Vocals and accompaniment have been separated.</p>
+          <a
+            href="#"
+            class="download-btn"
+            id="downloadBtn"
+            style="display: none"
+            >Download Separated Audio (ZIP)</a
+          >
+        </div>
+
+        <div class="result-section" id="lyricsResult" style="display: none">
+          <h3>📝 Extracted Lyrics</h3>
+          <div class="lyrics-text" id="lyricsText"></div>
+        </div>
+
+        <div class="result-section" id="timestampsResult" style="display: none">
+          <h3>⏰ Lyrics with Timestamps</h3>
+          <div id="timestampsList"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const API_BASE = "http://localhost:8000";
+
+      // Check service health on page load
+      async function checkHealth() {
+        try {
+          const response = await fetch(`${API_BASE}/health`);
+          const health = await response.json();
+
+          let statusHtml = "";
+          if (health.services) {
+            const voiceStatus = health.services.voice_separation.model_loaded
+              ? "healthy"
+              : "unhealthy";
+            const lyricsStatus = health.services.lyrics_extraction.model_loaded
+              ? "healthy"
+              : "unhealthy";
+
+            statusHtml = `
+                        <span class="service-status ${voiceStatus}">Voice Separation: ${voiceStatus}</span>
+                        <span class="service-status ${lyricsStatus}">Lyrics Extraction: ${lyricsStatus}</span>
+                    `;
+          } else {
+            statusHtml =
+              '<span class="service-status unhealthy">Services unavailable</span>';
+          }
+
+          document.getElementById("serviceStatus").innerHTML = statusHtml;
+        } catch (error) {
+          document.getElementById("serviceStatus").innerHTML =
+            '<span class="service-status unhealthy">Error checking services</span>';
+        }
+      }
+
+      // Show status message
+      function showStatus(message, type) {
+        const statusEl = document.getElementById("status");
+        statusEl.textContent = message;
+        statusEl.className = `status ${type}`;
+        statusEl.style.display = "block";
+      }
+
+      // Hide status message
+      function hideStatus() {
+        const statusEl = document.getElementById("status");
+        statusEl.style.display = "none";
+      }
+
+      // Format timestamp to MM:SS
+      function formatTimestamp(seconds) {
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${mins.toString().padStart(2, "0")}:${secs
+          .toString()
+          .padStart(2, "0")}`;
+      }
+
+      // Handle form submission
+      document
+        .getElementById("processForm")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+
+          const youtubeUrl = document.getElementById("youtubeUrl").value;
+          const processBtn = document.getElementById("processBtn");
+
+          // Disable button and show loading
+          processBtn.disabled = true;
+          processBtn.textContent = "Processing...";
+          showStatus(
+            "Downloading audio from YouTube and processing...",
+            "loading"
+          );
+
+          // Hide previous results
+          document.getElementById("results").style.display = "none";
+          document.getElementById("voiceSeparationResult").style.display =
+            "none";
+          document.getElementById("lyricsResult").style.display = "none";
+          document.getElementById("timestampsResult").style.display = "none";
+
+          try {
+            const response = await fetch(`${API_BASE}/process`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ youtube_url: youtubeUrl }),
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+              showStatus("Processing completed successfully!", "success");
+
+              // Show results
+              const resultsEl = document.getElementById("results");
+              resultsEl.style.display = "block";
+
+              // Voice separation result
+              if (result.voice_separation_url) {
+                const voiceResult = document.getElementById(
+                  "voiceSeparationResult"
+                );
+                voiceResult.style.display = "block";
+                const downloadBtn = document.getElementById("downloadBtn");
+                downloadBtn.href = `${API_BASE}${result.voice_separation_url}`;
+                downloadBtn.style.display = "inline-block";
+
+                // Add click handler to ensure download
+                downloadBtn.onclick = function (e) {
+                  e.preventDefault();
+                  const link = document.createElement("a");
+                  link.href = `${API_BASE}${result.voice_separation_url}`;
+                  link.download = "separated_audio.zip";
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                };
+              }
+
+              // Lyrics result
+              if (result.lyrics) {
+                const lyricsResult = document.getElementById("lyricsResult");
+                lyricsResult.style.display = "block";
+                document.getElementById("lyricsText").textContent =
+                  result.lyrics;
+              }
+
+              // Timestamps result
+              if (
+                result.lyrics_with_timestamps &&
+                result.lyrics_with_timestamps.length > 0
+              ) {
+                const timestampsResult =
+                  document.getElementById("timestampsResult");
+                timestampsResult.style.display = "block";
+
+                const timestampsList =
+                  document.getElementById("timestampsList");
+                timestampsList.innerHTML = result.lyrics_with_timestamps
+                  .map(
+                    (item) => `
+                            <div class="timestamp-item">
+                                <span class="timestamp-time">${formatTimestamp(
+                                  item.timestamp
+                                )}</span>: ${item.text}
+                            </div>
+                        `
+                  )
+                  .join("");
+              }
+            } else {
+              showStatus(
+                `Processing failed: ${result.error || result.message}`,
+                "error"
+              );
+            }
+          } catch (error) {
+            showStatus(`Error: ${error.message}`, "error");
+          } finally {
+            // Re-enable button
+            processBtn.disabled = false;
+            processBtn.textContent = "Process Audio";
+
+            // Hide status after 5 seconds if it's success
+            setTimeout(() => {
+              if (
+                document.getElementById("status").classList.contains("success")
+              ) {
+                hideStatus();
+              }
+            }, 5000);
+          }
+        });
+
+      // Check health on page load
+      checkHealth();
+
+      // Check health every 30 seconds
+      setInterval(checkHealth, 30000);
+    </script>
+  </body>
+</html>

@@ -1,0 +1,104 @@
+version: "3.8"
+
+services:
+  # Grafana Tempo - trace storage backend
+  tempo:
+    image: grafana/tempo:2.8.2
+    container_name: karaoke-tempo
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - tempo-storage:/var/tempo
+      - ./monitoring/tempo-config.yaml:/etc/tempo.yaml
+    ports:
+      - "3200:3200"
+    networks:
+      - karaoke-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3200/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Prometheus - metrics storage
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: karaoke-prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=2160h"  # 90 days for retention
+    volumes:
+      - prometheus-storage:/prometheus
+      - ./monitoring/prometheus-otel.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - karaoke-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # OpenTelemetry Collector - central hub for all telemetry
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    container_name: karaoke-otel-collector
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./monitoring/otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      # OTLP gRPC receiver (services send traces/metrics/logs here)
+      - "4317:4317"
+      # OTLP HTTP receiver
+      - "4318:4318"
+      # Prometheus metrics endpoint (for Collector's own metrics)
+      - "8889:8889"
+      - "13133:13133"
+    environment:
+      - GOGC=80
+    networks:
+      - karaoke-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:13133"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Grafana - unified visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: karaoke-grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-storage:/var/lib/grafana
+      - ./monitoring/grafana-datasources-otel.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
+      - ./monitoring/grafana-dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml
+      - ./monitoring/grafana-dashboards:/etc/grafana/provisioning/dashboards/dashboards
+    ports:
+      - "3000:3000"
+    networks:
+      - karaoke-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  tempo-storage:
+    driver: local
+  prometheus-storage:
+    driver: local
+  loki-storage:
+    driver: local
+  loki-wal:
+    driver: local
+  grafana-storage:
+    driver: local
+
+networks:
+  karaoke-network:
+    driver: bridge

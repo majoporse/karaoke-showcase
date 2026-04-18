@@ -1,0 +1,19 @@
+{{- if .Values.songManagement.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: song-management
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "karaoke-inator.labels" . | nindent 4 }}
+    app: song-management
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.songManagement.port }}
+      targetPort: {{ .Values.songManagement.port }}
+      protocol: TCP
+      name: api
+  selector:
+    app: song-management
+{{- end }}

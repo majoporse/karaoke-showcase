@@ -1,0 +1,29 @@
+{{- if .Values.orchestrator.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: orchestrator-ingress
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "karaoke-inator.labels" . | nindent 4 }}
+    app: orchestrator
+  annotations:
+    cert-manager.io/cluster-issuer: zerossl-prod
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - karaoke-be.{{ .Values.global.domain }}
+      secretName: karaoke-be-hatal-cc-tls
+  rules:
+    - host: karaoke-be.{{ .Values.global.domain }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: orchestrator
+                port:
+                  number: {{ .Values.orchestrator.port }}
+{{- end }}
