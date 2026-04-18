@@ -76,7 +76,6 @@ helm install karaoke-inator ./helm --namespace karaoke  # Kubernetes
 ## Documentation
 
 - [AGENTS.md](AGENTS.md) - Developer guidelines & coding standards
-- [BLOG.md](BLOG.md) - Technical deep-dive
 - Service READMEs in `services/*/`
 
 ## License
